@@ -25,6 +25,7 @@ Prompt → Story → Motion → Video
 | [`skill.yaml`](skill.yaml) | The skill descriptor (name, title, description, category) for agent skill loaders. |
 | [`scripts/check_density.py`](scripts/check_density.py) | A working density checker — run it on a HyperFrames HTML build and it counts keyframes, layers, tweens, text animators, and scenes, then reports PASS / FAIL against the skill's floors. Use it before rendering to find the shortfalls. |
 | [`templates/starter.html`](templates/starter.html) | A minimal working HyperFrames starter — the five story beats with the patterns applied (per-letter hook, typing prompt, staggered controls, scale pop + draw-on + count-up result, end card). Copy it and adapt it to your product. Intentionally minimal; the density check will report it below the floor, which is expected. |
+| [`references/`](references/) | The two verified template builds as reference — the SaaS v3 HTML (52s, 11 scenes, 18 text animators) and the UI Demo v3 HTML (36s, 56 comps, 216 layers), each with `gsap.min.js`. The third template (AI Intro) is excluded — it is the broken one. Fonts are free Google Fonts; see `references/README.md` for the list and where to put them. |
 
 ## The patterns
 
