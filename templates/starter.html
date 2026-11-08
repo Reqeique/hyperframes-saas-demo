@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HyperFrames SaaS Demo — Starter Template</title>
+<!--
+  HyperFrames SaaS Demo — Starter Template
+  ========================================
+  A minimal working HyperFrames page that demonstrates the method from
+  SKILL.md. Copy this file and adapt it to your product.
+
+  What it shows (the five story beats):
+    1. Hook (0–3s)    — the promise, revealed letter by letter
+    2. Prompt (3–12s) — the user types a prompt, character by character
+    3. Response (12–16s) — the product answers; controls stagger in
+    4. Result (16–30s) — the payoff plays (a ball falls, a count-up ticks)
+    5. End card (30–36s) — brand + URL, fully visible
+
+  Patterns applied (see SKILL.md):
+    - Beat: in 0.95s / hold 0.67s / out 0.87s
+    - Per-letter motion: delay = 0.08s × index, damped cosine (approx. back.out)
+    - Group stagger: 30–80ms
+    - Easing: expo.out (clean) / back.out (personality, the scale pop)
+    - Moving-shape transitions (a panel wipes between beats)
+    - Built space: high-key gradient + soft blobs + glass card
+    - Scale pop: the result 0.94 → 1.0, back.out
+
+  How to render it:
+    - Open in a browser to preview (the timeline plays automatically).
+    - For a frame-accurate render, drive it with Playwright: load the page,
+      seek the GSAP timeline to each frame time (12fps), screenshot, then
+      encode with ffmpeg (see SKILL.md "Building the video").
+    - Run the density check:  python3 ../scripts/check_density.py starter.html 36
+      NOTE: this starter is intentionally minimal — the check will report it
+      below the floor (few layers/tweens). That is expected. The check is for
+      your full build; use it to find the shortfalls before rendering.
+
+  Replace the product name, the prompt, the result, and the URL with yours.
+  The structure and the timing stay.
+-->
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #eaf2fb; }
+  #stage {
+    position: relative; width: 1920px; height: 1080px;
+    transform-origin: 0 0;
+    font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+    background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 45%, #ffffff 100%);
+    overflow: hidden;
+  }
+  /* Built space: soft blobs + a glass card */
+  .blob { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .55; }
+  .blob.b1 { width: 700px; height: 700px; left: -160px; top: -180px; background: #93c5fd; }
+  .blob.b2 { width: 560px; height: 560px; right: -120px; bottom: -140px; background: #c4b5fd; }
+  .blob.b3 { width: 420px; height: 420px; left: 62%; top: 8%; background: #fbcfe8; opacity: .4; }
+  .glass {
+    position: absolute; border-radius: 28px;
+    background: rgba(255,255,255,.55);
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(255,255,255,.7);
+    box-shadow: 0 24px 60px rgba(15,23,42,.12);
+  }
+  .char { display: inline-block; will-change: transform, opacity; }
+  .scene { position: absolute; inset: 0; }
+  /* Beat 1 — Hook */
+  #hook { display: flex; align-items: center; justify-content: center; }
+  #hook h1 { font-size: 110px; font-weight: 800; color: #0f172a; letter-spacing: -2px; text-align: center; line-height: 1.05; }
+  #hook h1 .accent { color: #2563eb; }
+  /* Beat 2 — Prompt */
+  #prompt-wrap { left: 360px; top: 380px; width: 1200px; padding: 36px 44px; }
+  #prompt-wrap .label { font-size: 28px; color: #64748b; margin-bottom: 14px; }
+  #prompt-text { font-size: 56px; font-weight: 600; color: #0f172a; min-height: 70px; }
+  #prompt-text .cursor { display: inline-block; width: 6px; height: 56px; background: #2563eb; vertical-align: -8px; margin-left: 6px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  /* Beat 3 — Response */
+  #response { left: 360px; top: 640px; width: 1200px; padding: 28px 44px; }
+  #response .reply { font-size: 44px; font-weight: 600; color: #166534; }
+  #response .controls { display: flex; gap: 18px; margin-top: 22px; }
+  #response .chip { font-size: 28px; font-weight: 600; color: #1e3a8a; background: #dbeafe; border-radius: 999px; padding: 12px 26px; }
+  /* Beat 4 — Result */
+  #result-card { left: 360px; top: 300px; width: 1200px; height: 480px; padding: 36px 44px; }
+  #result-card h2 { font-size: 44px; font-weight: 700; color: #0f172a; }
+  #result-card .sim { position: relative; height: 260px; margin-top: 24px; border-radius: 18px; background: linear-gradient(180deg, #0f172a, #1e3a8a); overflow: hidden; }
+  #result-card .ball { position: absolute; left: 60px; top: 20px; width: 56px; height: 56px; border-radius: 50%; background: #f97316; box-shadow: 0 0 0 8px rgba(249,115,22,.25); }
+  #result-card .trail { position: absolute; left: 88px; top: 48px; width: 900px; height: 4px; background: #f97316; opacity: .5; transform-origin: 0 50%; }
+  #result-card .score { position: absolute; right: 28px; bottom: 20px; font-size: 64px; font-weight: 800; color: #fff; }
+  #result-card .score small { font-size: 28px; font-weight: 600; color: #bfdbfe; }
+  /* Beat 5 — End card */
+  #endcard { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  #endcard h1 { font-size: 130px; font-weight: 800; color: #0f172a; letter-spacing: -3px; }
+  #endcard p { font-size: 48px; color: #2563eb; font-weight: 600; margin-top: 18px; }
+  /* Moving-shape transition wipe */
+  #wipe { position: absolute; inset: 0; background: #2563eb; transform: scaleX(0); transform-origin: left; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+
+  <!-- Beat 1 — Hook -->
+  <div class="scene" id="hook"><h1 id="hook-text"></h1></div>
+
+  <!-- Beat 2 — Prompt -->
+  <div class="scene" id="prompt-scene" style="opacity:0">
+    <div class="glass" id="prompt-wrap">
+      <div class="label">Ask your product</div>
+      <div id="prompt-text"><span id="prompt-chars"></span><span class="cursor"></span></div>
+    </div>
+  </div>
+
+  <!-- Beat 3 — Response -->
+  <div class="scene" id="response-scene" style="opacity:0">
+    <div class="glass" id="response">
+      <div class="reply" id="reply-text">Simulation active.</div>
+      <div class="controls">
+        <span class="chip">Live 3D</span><span class="chip">Real time</span>
+        <span class="chip">Your words</span><span class="chip">Try it now</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Beat 4 — Result -->
+  <div class="scene" id="result-scene" style="opacity:0">
+    <div class="glass" id="result-card">
+      <h2>Here is your simulation</h2>
+      <div class="sim">
+        <div class="trail" id="trail"></div>
+        <div class="ball" id="ball"></div>
+        <div class="score"><span id="score-num">0</span> <small>m</small></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Beat 5 — End card -->
+  <div class="scene" id="endcard" style="opacity:0">
+    <h1 id="brand-text"></h1>
+    <p>yourproduct.example.com</p>
+  </div>
+
+  <div id="wipe"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script>
+/*
+ * Timeline — the score. Each beat is a set of tweens at its time window.
+ * Per-letter delay: 0.08s × index. Beat: in 0.95s / hold 0.67s / out 0.87s.
+ * Easing: expo.out (clean) / back.out (personality, the scale pop).
+ * Total: 36s. Render at 12fps.
+ */
+
+// Split a string into per-character spans (inline-block, so transforms apply).
+function splitChars(el, text) {
+  el.innerHTML = "";
+  [...text].forEach(ch => {
+    const s = document.createElement("span");
+    s.className = "char";
+    s.innerHTML = ch === " " ? "&nbsp;" : ch;
+    el.appendChild(s);
+  });
+  return el.querySelectorAll(".char");
+}
+
+const hookChars = splitChars(document.getElementById("hook-text"),
+  "Type a sentence. Watch physics happen.");
+// Accent the last two words.
+hookChars.forEach((c, i) => { if (i >= 28) c.classList.add("accent"); });
+const promptChars = splitChars(document.getElementById("prompt-chars"),
+  "Simulate a falling ball");
+const brandChars = splitChars(document.getElementById("brand-text"), "YourProduct");
+
+const tl = gsap.timeline({ defaults: { ease: "expo.out" } });
+
+// Beat 1 — Hook (0–3s): the promise reveals letter by letter.
+tl.from("#hook .char", { y: 30, opacity: 0, duration: 0.95, stagger: 0.08 }, 0);
+tl.to("#hook", { opacity: 0, duration: 0.87 }, 2.49);
+
+// Beat 2 — Prompt (3–12s): the input slides in, then the prompt types.
+tl.to("#prompt-scene", { opacity: 1, duration: 0.4 }, 3.0);
+tl.from("#prompt-wrap", { y: 40, opacity: 0, duration: 0.95 }, 3.0);
+tl.from("#prompt-chars .char", { opacity: 0, duration: 0.05, stagger: 0.08 }, 4.0);
+tl.to("#prompt-scene", { opacity: 0, duration: 0.87 }, 11.1);
+
+// Beat 3 — Response (12–16s): the answer pops in, controls stagger.
+tl.to("#response-scene", { opacity: 1, duration: 0.4 }, 12.0);
+tl.from("#reply-text", { y: 24, opacity: 0, duration: 0.95 }, 12.0);
+tl.from("#response .chip", { y: 20, opacity: 0, duration: 0.5, stagger: 0.05 }, 12.6);
+tl.to("#response-scene", { opacity: 0, duration: 0.87 }, 15.1);
+
+// Beat 4 — Result (16–30s): scale pop, then the payoff plays.
+tl.to("#result-scene", { opacity: 1, duration: 0.4 }, 16.0);
+tl.fromTo("#result-card", { scale: 0.94 }, { scale: 1, duration: 0.4, ease: "back.out(1.7)" }, 16.0);
+// The ball falls and the trajectory draws (the draw-on pattern).
+tl.fromTo("#ball", { x: 0, y: 0 }, { x: 880, y: 170, duration: 2.2, ease: "power1.in" }, 16.4);
+tl.fromTo("#trail", { scaleX: 0 }, { scaleX: 1, duration: 2.2, ease: "power1.in" }, 16.4);
+// The count-up: the score earns itself (0 → 256).
+const score = { v: 0 };
+tl.to(score, { v: 256, duration: 2.2, ease: "power1.out",
+  onUpdate: () => document.getElementById("score-num").textContent = Math.round(score.v) }, 16.4);
+// The payoff keeps moving (the loop pattern): the ball settles, the card breathes.
+tl.to("#ball", { y: 170, duration: 1.2, ease: "bounce.out" }, 18.6);
+tl.to("#result-scene", { opacity: 0, duration: 0.87 }, 29.1);
+
+// Beat 5 — End card (30–36s): the brand + URL settle, fully visible.
+tl.to("#endcard", { opacity: 1, duration: 0.4 }, 30.0);
+tl.from("#brand-text .char", { y: 30, opacity: 0, duration: 0.95, stagger: 0.08 }, 30.0);
+tl.from("#endcard p", { opacity: 0, duration: 0.4 }, 31.2);
+
+// Moving-shape transition: a wipe carries the story from the hook to the prompt.
+tl.fromTo("#wipe", { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: "power2.inOut" }, 2.5);
+tl.to("#wipe", { scaleX: 0, transformOrigin: "right", duration: 0.5, ease: "power2.inOut" }, 3.0);
+
+// Fit the 1920×1080 stage to the window (the stage scale, applied after every seek).
+function fitStage() {
+  const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+  document.getElementById("stage").style.transform = `scale(${s})`;
+}
+window.addEventListener("resize", fitStage);
+fitStage();
+
+// Expose the timeline for frame-accurate rendering (Playwright seeks it).
+window.__tl = tl;
+</script>
+</body>
+</html>
